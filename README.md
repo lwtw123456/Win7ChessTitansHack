@@ -1,0 +1,2 @@
+# Win7ChessTitansHack
+Win7版64位国际象棋的2项功能辅助
