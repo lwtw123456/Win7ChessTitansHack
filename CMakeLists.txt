@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(ChessEngineHook LANGUAGES C CXX)
+project(ChessHack LANGUAGES C CXX RC)
 
 if(NOT WIN32)
     message(FATAL_ERROR "This project must be built for Windows.")
@@ -10,78 +10,93 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "Build the DLL as x64; the recovered layouts are 64-bit.")
 endif()
 
-add_library(ChessEngineHook SHARED
+add_library(ChessHack SHARED
     dllmain.cpp
+    heart.rc
     3rdparty/safetyhook.cpp
     3rdparty/Zydis.c
 )
 
-set_target_properties(ChessEngineHook PROPERTIES
-    OUTPUT_NAME "chess_hack"
-)
-
-target_include_directories(ChessEngineHook PRIVATE
+target_include_directories(ChessHack PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty"
 )
 
-target_compile_features(ChessEngineHook PRIVATE
+target_compile_features(ChessHack PRIVATE
     cxx_std_23
 )
 
-target_compile_definitions(ChessEngineHook PRIVATE
+target_compile_definitions(ChessHack PRIVATE
     WIN32_LEAN_AND_MEAN
     NOMINMAX
     UNICODE
     _UNICODE
 )
 
-target_link_libraries(ChessEngineHook PRIVATE
+target_link_libraries(ChessHack PRIVATE
     Comctl32
+    d3d9
     Psapi
     Ws2_32
 )
 
-include(CheckIPOSupported)
-
-check_ipo_supported(
-    RESULT IPO_SUPPORTED
-    OUTPUT IPO_ERROR
-    LANGUAGES C CXX
+set_target_properties(ChessHack PROPERTIES
+    OUTPUT_NAME "chess_hack"
 )
 
-if(IPO_SUPPORTED)
-    set_property(TARGET ChessEngineHook PROPERTY
-        INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
-    )
+set_property(
+    TARGET ChessHack
+    PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+)
 
-    set_property(TARGET ChessEngineHook PROPERTY
-        INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE
-    )
-endif()
+set_property(
+    TARGET ChessHack
+    PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE
+)
+
+set_property(
+    TARGET ChessHack
+    PROPERTY INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE
+)
 
 if(MSVC)
-    target_compile_options(ChessEngineHook PRIVATE
+
+    target_compile_options(ChessHack PRIVATE
         /W4
         /permissive-
         /EHsc
         /utf-8
-        /Gy
-        /Gw
-        /GF
-        /Oi
-        /Zc:inline
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:/O1>
+        $<$<CONFIG:Release,RelWithDebInfo>:
+            /O2
+            /Oi
+            /Gy
+            /Gw
+            /GF
+            /Zc:inline
+        >
+        $<$<CONFIG:MinSizeRel>:
+            /O1
+            /Oi
+            /Gy
+            /Gw
+            /GF
+            /Zc:inline
+        >
     )
 
-    target_link_options(ChessEngineHook PRIVATE
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:/OPT:REF>
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:/OPT:ICF>
-        $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:/INCREMENTAL:NO>
+    target_link_options(ChessHack PRIVATE
+
+        $<$<CONFIG:Release,RelWithDebInfo,MinSizeRel>:
+            /OPT:REF
+            /OPT:ICF
+            /INCREMENTAL:NO
+        >
     )
 
-    set_property(TARGET ChessEngineHook PROPERTY
-        MSVC_RUNTIME_LIBRARY
+    set_property(
+        TARGET ChessHack
+        PROPERTY MSVC_RUNTIME_LIBRARY
         "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
     )
+
 endif()
