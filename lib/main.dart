@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: '国际象棋两项修改器',
+      title: '国际象棋四项修改器',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
@@ -90,6 +90,12 @@ class _HomePageState extends State<HomePage> {
   bool running = false;
   bool runBusy = false;
 
+  bool pawnPromotion = false;
+  bool pawnPromotionBusy = false;
+
+  bool succubusQueen = false;
+  bool succubusQueenBusy = false;
+
   @override
   void initState() {
     super.initState();
@@ -144,13 +150,14 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> send(
     String command, {
-    required bool installGroup,
+    required bool busy,
+    required VoidCallback onBusyStart,
+    required VoidCallback onBusyEnd,
     required VoidCallback onSuccess,
   }) async {
-    if (!ready) return;
-    if (installGroup ? installBusy : runBusy) return;
+    if (!ready || busy) return;
 
-    setBusy(installGroup, true);
+    if (mounted) setState(onBusyStart);
 
     try {
       final result = await sendCommand(command);
@@ -169,13 +176,8 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       addLog('执行失败：$e');
     } finally {
-      setBusy(installGroup, false);
+      if (mounted) setState(onBusyEnd);
     }
-  }
-
-  void setBusy(bool installGroup, bool value) {
-    if (!mounted) return;
-    setState(() => installGroup ? installBusy = value : runBusy = value);
   }
 
   void addLog(String text) {
@@ -217,6 +219,16 @@ class _HomePageState extends State<HomePage> {
     final canStart = ready && !runBusy && !running;
     final canStop = ready && !runBusy && running;
 
+    final canOpenPawnPromotion =
+        ready && !pawnPromotionBusy && !pawnPromotion;
+    final canClosePawnPromotion =
+        ready && !pawnPromotionBusy && pawnPromotion;
+
+    final canOpenSuccubusQueen =
+        ready && !succubusQueenBusy && !succubusQueen;
+    final canCloseSuccubusQueen =
+        ready && !succubusQueenBusy && succubusQueen;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -225,7 +237,7 @@ class _HomePageState extends State<HomePage> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(
                 maxWidth: 720,
-                maxHeight: 580,
+                maxHeight: 700,
               ),
               child: Column(
                 children: [
@@ -246,12 +258,16 @@ class _HomePageState extends State<HomePage> {
                           canDisable: canUninstall,
                           onEnable: () => send(
                             'Open free move',
-                            installGroup: true,
+                            busy: installBusy,
+                            onBusyStart: () => installBusy = true,
+                            onBusyEnd: () => installBusy = false,
                             onSuccess: () => installed = true,
                           ),
                           onDisable: () => send(
                             'Close free move',
-                            installGroup: true,
+                            busy: installBusy,
+                            onBusyStart: () => installBusy = true,
+                            onBusyEnd: () => installBusy = false,
                             onSuccess: () => installed = false,
                           ),
                         ),
@@ -267,13 +283,69 @@ class _HomePageState extends State<HomePage> {
                           canDisable: canStop,
                           onEnable: () => send(
                             'Open win directly',
-                            installGroup: false,
+                            busy: runBusy,
+                            onBusyStart: () => runBusy = true,
+                            onBusyEnd: () => runBusy = false,
                             onSuccess: () => running = true,
                           ),
                           onDisable: () => send(
                             'Close win directly',
-                            installGroup: false,
+                            busy: runBusy,
+                            onBusyStart: () => runBusy = true,
+                            onBusyEnd: () => runBusy = false,
                             onSuccess: () => running = false,
+                          ),
+                        ),
+                        _featurePanel(
+                          title: '指兵为后',
+                          description:
+                              pawnPromotion ? '当前已启用' : '点击兵直接升变为王后',
+                          icon: Icons.upgrade_rounded,
+                          active: pawnPromotion,
+                          busy: pawnPromotionBusy,
+                          enableLabel: '启用',
+                          disableLabel: '关闭',
+                          canEnable: canOpenPawnPromotion,
+                          canDisable: canClosePawnPromotion,
+                          onEnable: () => send(
+                            'open pawn promotion',
+                            busy: pawnPromotionBusy,
+                            onBusyStart: () => pawnPromotionBusy = true,
+                            onBusyEnd: () => pawnPromotionBusy = false,
+                            onSuccess: () => pawnPromotion = true,
+                          ),
+                          onDisable: () => send(
+                            'close pawn promotion',
+                            busy: pawnPromotionBusy,
+                            onBusyStart: () => pawnPromotionBusy = true,
+                            onBusyEnd: () => pawnPromotionBusy = false,
+                            onSuccess: () => pawnPromotion = false,
+                          ),
+                        ),
+                        _featurePanel(
+                          title: '魅魔王后',
+                          description:
+                              succubusQueen ? '当前已启用' : '王后不再吃子，改为魅惑棋子',
+                          icon: Icons.auto_awesome_rounded,
+                          active: succubusQueen,
+                          busy: succubusQueenBusy,
+                          enableLabel: '启用',
+                          disableLabel: '关闭',
+                          canEnable: canOpenSuccubusQueen,
+                          canDisable: canCloseSuccubusQueen,
+                          onEnable: () => send(
+                            'open succubus queen',
+                            busy: succubusQueenBusy,
+                            onBusyStart: () => succubusQueenBusy = true,
+                            onBusyEnd: () => succubusQueenBusy = false,
+                            onSuccess: () => succubusQueen = true,
+                          ),
+                          onDisable: () => send(
+                            'close succubus queen',
+                            busy: succubusQueenBusy,
+                            onBusyStart: () => succubusQueenBusy = true,
+                            onBusyEnd: () => succubusQueenBusy = false,
+                            onSuccess: () => succubusQueen = false,
                           ),
                         ),
                       ];
@@ -284,15 +356,31 @@ class _HomePageState extends State<HomePage> {
                             panels[0],
                             const SizedBox(height: 10),
                             panels[1],
+                            const SizedBox(height: 10),
+                            panels[2],
+                            const SizedBox(height: 10),
+                            panels[3],
                           ],
                         );
                       }
 
-                      return Row(
+                      return Column(
                         children: [
-                          Expanded(child: panels[0]),
-                          const SizedBox(width: 10),
-                          Expanded(child: panels[1]),
+                          Row(
+                            children: [
+                              Expanded(child: panels[0]),
+                              const SizedBox(width: 10),
+                              Expanded(child: panels[1]),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(child: panels[2]),
+                              const SizedBox(width: 10),
+                              Expanded(child: panels[3]),
+                            ],
+                          ),
                         ],
                       );
                     },
@@ -330,7 +418,7 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '国际象棋两项修改器',
+                '国际象棋四项修改器',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
