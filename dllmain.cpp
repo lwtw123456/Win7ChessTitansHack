@@ -1436,9 +1436,9 @@ bool FlipPieceColorAndSide(
 
 void ExecuteMovePart(
     Game* game,
-    Board* boardAfterMove,
+    Board* boardCopy,
     SetSizeInternalFn setSizeInternal) noexcept {
-    if (!game || !boardAfterMove || !setSizeInternal) {
+    if (!game || !boardCopy || !setSizeInternal) {
         return;
     }
 
@@ -1462,7 +1462,7 @@ void ExecuteMovePart(
             auto* const boardData =
                 *reinterpret_cast<void***>(boardHistory);
             if (boardData) {
-                boardData[boardCount++] = boardAfterMove;
+                boardData[boardCount++] = boardCopy;
             }
         }
 
@@ -2156,11 +2156,11 @@ void HookedSuccubusQueen(SafetyHookContext& context) noexcept {
 			return;
 		}
 		
-        auto* const boardAfterMove =
+        auto* const boardCopy =
             reinterpret_cast<Board*>(context.rcx);
         auto* const request =
             reinterpret_cast<Move*>(context.rdx);
-        if (!boardAfterMove || !request) {
+        if (!boardCopy || !request) {
             return;
         }
 
@@ -2172,7 +2172,7 @@ void HookedSuccubusQueen(SafetyHookContext& context) noexcept {
         }
 
         Piece* const movingPiece = GetBoardPiece(
-            boardAfterMove,
+            boardCopy,
             requestCopy.fromX,
             requestCopy.fromY);
         if (!movingPiece ||
@@ -2181,7 +2181,7 @@ void HookedSuccubusQueen(SafetyHookContext& context) noexcept {
         }
 
         Piece* const capturedPiece = GetBoardPiece(
-            boardAfterMove,
+            boardCopy,
             requestCopy.toX,
             requestCopy.toY);
         if (!capturedPiece) {
@@ -2210,7 +2210,7 @@ void HookedSuccubusQueen(SafetyHookContext& context) noexcept {
                 requestCopy.toX +
                 requestCopy.toY * kBoardWidth);
         const std::uintptr_t destinationAddress =
-            AddressOf(boardAfterMove) +
+            AddressOf(boardCopy) +
             destinationIndex * sizeof(Piece*);
 
         if (!MemoryEditor::WriteValue<Piece*>(
@@ -2237,7 +2237,7 @@ void HookedSuccubusQueen(SafetyHookContext& context) noexcept {
         ShowHeart(requestCopy.toX, requestCopy.toY);
         operatorDelete(capturedPiece);
 
-        ExecuteMovePart(game, boardAfterMove, setSizeInternal);
+        ExecuteMovePart(game, boardCopy, setSizeInternal);
 
         std::int32_t resultType = 0;
         (void)TryEvaluateAIBoardPostMove(
